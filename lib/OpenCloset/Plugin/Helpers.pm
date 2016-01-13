@@ -6,7 +6,7 @@ use Mojo::Base 'Mojolicious::Plugin';
 
 =head1 NAME
 
-OpenCloset::Plugin::Helpers
+OpenCloset::Plugin::Helpers - opencloset mojo helper
 
 =head1 SYNOPSIS
 
@@ -67,3 +67,13 @@ sub error {
 }
 
 1;
+
+__END__
+
+=head1 COPYRIGHT
+
+The MIT License (MIT)
+
+Copyright (c) 2016 열린옷장
+
+=cut
