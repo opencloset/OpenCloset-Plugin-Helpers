@@ -4,6 +4,8 @@ use Mojo::Base 'Mojolicious::Plugin';
 
 use Parcel::Track;
 
+our $SMS_FROM = '07043257521';
+
 =encoding utf8
 
 =head1 NAME
@@ -26,6 +28,7 @@ sub register {
     $app->helper( log => sub { shift->app->log } );
     $app->helper( error  => \&error );
     $app->helper( parcel => \&parcel );
+    $app->helper( sms    => \&sms );
 }
 
 =head1 HELPERS
@@ -94,6 +97,21 @@ sub parcel {
     }
     return unless $driver;
     return Parcel::Track->new( $driver, $waybill )->uri;
+}
+
+=head2 sms( $to, $text, $from? )
+
+    $self->sms('01012345678', 'hi');
+
+=cut
+
+sub sms {
+    my ( $self, $to, $text, $from ) = @_;
+    return unless $to;
+    return unless $text;
+    return unless $self->schema;
+
+    return $self->schema->resultset('SMS')->create( { from => $from || $SMS_FROM, to => $to, text => $text } );
 }
 
 1;
