@@ -109,9 +109,11 @@ sub sms {
     my ( $self, $to, $text, $from ) = @_;
     return unless $to;
     return unless $text;
-    return unless $self->schema;
 
-    return $self->schema->resultset('SMS')->create( { from => $from || $SMS_FROM, to => $to, text => $text } );
+    my $schema = $self->app->schema;
+    return unless $schema;
+
+    return $schema->resultset('SMS')->create( { from => $from || $SMS_FROM, to => $to, text => $text } );
 }
 
 1;
