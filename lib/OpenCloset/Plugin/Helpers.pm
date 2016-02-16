@@ -2,6 +2,8 @@ package OpenCloset::Plugin::Helpers;
 
 use Mojo::Base 'Mojolicious::Plugin';
 
+use Config::INI::Reader;
+use Date::Holidays::KR ();
 use Parcel::Track;
 
 our $SMS_FROM = '07043257521';
@@ -26,9 +28,10 @@ sub register {
     my ( $self, $app, $conf ) = @_;
 
     $app->helper( log => sub { shift->app->log } );
-    $app->helper( error  => \&error );
-    $app->helper( parcel => \&parcel );
-    $app->helper( sms    => \&sms );
+    $app->helper( error    => \&error );
+    $app->helper( parcel   => \&parcel );
+    $app->helper( sms      => \&sms );
+    $app->helper( holidays => \&holidays );
 }
 
 =head1 HELPERS
@@ -115,6 +118,42 @@ sub sms {
     return unless $schema;
 
     return $schema->resultset('SMS')->create( { from => $from || $SMS_FROM, to => $to, text => $text } );
+}
+
+=head2 holidays( $year )
+
+=over
+
+=item $year - 4 digit string
+
+    my $hashref = $self->holidays(2016);    # KR holidays in 2016
+
+=back
+
+=cut
+
+sub holidays {
+    my ( $self, $year ) = @_;
+    return unless $year;
+
+    my $ini            = $self->app->static->file('misc/extra-holidays.ini');
+    my $extra_holidays = Config::INI::Reader->read_file( $ini->path );
+
+    my @holidays;
+    my $holidays = Date::Holidays::KR::holidays($year);
+    for my $mmdd ( keys %{ $holidays || {} } ) {
+        my $mm = substr $mmdd, 0, 2;
+        my $dd = substr $mmdd, 2;
+        push @holidays, "$year-$mm-$dd";
+    }
+
+    for my $mmdd ( keys %{ $extra_holidays->{$year} || {} } ) {
+        my $mm = substr $mmdd, 0, 2;
+        my $dd = substr $mmdd, 2;
+        push @holidays, "$year-$mm-$dd";
+    }
+
+    return sort @holidays;
 }
 
 1;
