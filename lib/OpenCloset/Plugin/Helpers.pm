@@ -59,6 +59,7 @@ sub error {
     my $template;
     given ($status) {
         $template = 'bad_request' when 400;
+        $template = 'unauthorized' when 401;
         $template = 'not_found' when 404;
         $template = 'exception' when 500;
         default { $template = 'unknown' }
