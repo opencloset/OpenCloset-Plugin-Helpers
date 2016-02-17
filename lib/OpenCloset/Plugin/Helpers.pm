@@ -136,8 +136,8 @@ sub holidays {
     my ( $self, $year ) = @_;
     return unless $year;
 
-    my $ini            = $self->app->static->file('misc/extra-holidays.ini');
-    my $extra_holidays = Config::INI::Reader->read_file( $ini->path );
+    my $ini = $self->app->static->file('misc/extra-holidays.ini');
+    my $extra_holidays = $ini->path ? Config::INI::Reader->read_file( $ini->path ) : {};
 
     my @holidays;
     my $holidays = Date::Holidays::KR::holidays($year);
