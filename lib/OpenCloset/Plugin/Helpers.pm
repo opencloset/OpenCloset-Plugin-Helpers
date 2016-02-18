@@ -160,6 +160,8 @@ sub holidays {
 
 =head2 footer
 
+    %= footer;
+
 =cut
 
 sub footer {
