@@ -1,3 +1,6 @@
+v0.0.3    Mon, 29 Feb 2016 19:16:42 +0900
+  - Add terms and privacy external link
+
 v0.0.2    Mon, 22 Feb 2016 17:43:02 +0900
   - Add helper `parcel`
   - Add helper `sms`
