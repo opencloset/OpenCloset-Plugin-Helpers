@@ -1,3 +1,5 @@
+  - Add helper `send_mail`
+
 v0.0.3    Mon, 29 Feb 2016 19:16:42 +0900
   - Add terms and privacy external link
 
