@@ -4,8 +4,11 @@ use Mojo::Base 'Mojolicious::Plugin';
 
 use Config::INI::Reader;
 use Date::Holidays::KR ();
+use Email::Sender::Simple qw(sendmail);
+use Email::Sender::Transport::SMTP qw();
 use Mojo::ByteStream;
 use Parcel::Track;
+use Try::Tiny;
 
 our $SMS_FROM = '07043257521';
 
@@ -29,11 +32,12 @@ sub register {
     my ( $self, $app, $conf ) = @_;
 
     $app->helper( log => sub { shift->app->log } );
-    $app->helper( error    => \&error );
-    $app->helper( parcel   => \&parcel );
-    $app->helper( sms      => \&sms );
-    $app->helper( holidays => \&holidays );
-    $app->helper( footer   => \&footer );
+    $app->helper( error     => \&error );
+    $app->helper( parcel    => \&parcel );
+    $app->helper( sms       => \&sms );
+    $app->helper( holidays  => \&holidays );
+    $app->helper( footer    => \&footer );
+    $app->helper( send_mail => \&send_mail );
 }
 
 =head1 HELPERS
@@ -218,6 +222,32 @@ sub footer {
   </footer>};
 
     return Mojo::ByteStream->new($html);
+}
+
+=head2 send_mail( $email )
+
+    my $email = Email::Simple->create(header => [..], body => '...');
+    $self->send_mail( encode_utf8( $email->as_string ) );
+
+=over
+
+=item $email - RFC 5322 formatted String.
+
+=back
+
+=cut
+
+sub send_mail {
+    my ( $self, $email ) = @_;
+    return unless $email;
+
+    my $transport = Email::Sender::Transport::SMTP->new( { host => 'localhost' } );
+    try {
+        sendmail( $email, { transport => $transport } );
+    }
+    catch {
+        $self->log->error("Failed to sendmail: $_");
+    };
 }
 
 1;
