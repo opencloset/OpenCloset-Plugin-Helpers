@@ -242,12 +242,16 @@ sub send_mail {
     return unless $email;
 
     my $transport = Email::Sender::Transport::SMTP->new( { host => 'localhost' } );
-    try {
+    my $success = try {
         sendmail( $email, { transport => $transport } );
+        return 1;
     }
     catch {
         $self->log->error("Failed to sendmail: $_");
+        return;
     };
+
+    return $success;
 }
 
 1;
