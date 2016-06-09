@@ -12,6 +12,12 @@ use Try::Tiny;
 
 our $SMS_FROM = '07043257521';
 
+our $INTERVAL = 55;
+our %CHAR2DECIMAL;
+map { $CHAR2DECIMAL{$_} = '0' . $_ } ( 0 .. 9 );
+map { $CHAR2DECIMAL{$_} = hex($_) } ( 'A' .. 'F' );
+map { $CHAR2DECIMAL{$_} = ord($_) - $INTERVAL } ( 'G' .. 'Z' );
+
 =encoding utf8
 
 =head1 NAME
@@ -32,12 +38,13 @@ sub register {
     my ( $self, $app, $conf ) = @_;
 
     $app->helper( log => sub { shift->app->log } );
-    $app->helper( error     => \&error );
-    $app->helper( parcel    => \&parcel );
-    $app->helper( sms       => \&sms );
-    $app->helper( holidays  => \&holidays );
-    $app->helper( footer    => \&footer );
-    $app->helper( send_mail => \&send_mail );
+    $app->helper( error        => \&error );
+    $app->helper( parcel       => \&parcel );
+    $app->helper( sms          => \&sms );
+    $app->helper( holidays     => \&holidays );
+    $app->helper( footer       => \&footer );
+    $app->helper( send_mail    => \&send_mail );
+    $app->helper( code2decimal => \&code2decimal );
 }
 
 =head1 HELPERS
@@ -252,6 +259,22 @@ sub send_mail {
     };
 
     return $success;
+}
+
+=head2 code2decimal
+
+    % code2decimal('J001')
+    # 1900-0001
+
+=cut
+
+sub code2decimal {
+    my ( $self, $code ) = @_;
+    return '' unless $code;
+
+    $code =~ s/^0//;
+    my @chars = map { $CHAR2DECIMAL{$_} } split //, $code;
+    return sprintf "%02d%02d-%02d%02d", @chars;
 }
 
 1;
