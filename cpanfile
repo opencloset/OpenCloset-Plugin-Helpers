@@ -1,8 +1,10 @@
 requires 'Config::INI::Reader';
 requires 'Date::Holidays::KR';
+requires 'Digest::MD5';
 requires 'Email::Sender::Simple';
 requires 'Email::Sender::Transport::SMTP';
 requires 'Mojo::ByteStream';
+requires 'Mojo::URL';
 requires 'Mojolicious';
 requires 'Parcel::Track';
 requires 'Try::Tiny';
