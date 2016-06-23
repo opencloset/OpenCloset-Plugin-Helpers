@@ -4,9 +4,11 @@ use Mojo::Base 'Mojolicious::Plugin';
 
 use Config::INI::Reader;
 use Date::Holidays::KR ();
+use Digest::MD5 qw/md5_hex/;
 use Email::Sender::Simple qw(sendmail);
 use Email::Sender::Transport::SMTP qw();
 use Mojo::ByteStream;
+use Mojo::URL;
 use Parcel::Track;
 use Try::Tiny;
 
@@ -45,6 +47,7 @@ sub register {
     $app->helper( footer       => \&footer );
     $app->helper( send_mail    => \&send_mail );
     $app->helper( code2decimal => \&code2decimal );
+    $app->helper( oavatar_url  => \&oavatar_url );
 }
 
 =head1 HELPERS
@@ -275,6 +278,48 @@ sub code2decimal {
     $code =~ s/^0//;
     my @chars = map { $CHAR2DECIMAL{$_} } split //, $code;
     return sprintf "%02d%02d-%02d%02d", @chars;
+}
+
+=head2 oavatar_url
+
+    % oavatar_url(key => $key, %options)
+    # https://avatar.theopencloset.net/avatar/900150983cd24fb0d6963f7d28e17f72
+
+C<%options> are optional.
+
+=head3 size
+
+    size => 40    # 40 x 40 image
+
+=head3 default
+
+C<$key> 이미지가 없으면 나타낼 이미지의 주소
+
+    default => "https://secure.wikimedia.org/wikipedia/en/wiki/File:Mad30.jpg"
+
+=cut
+
+sub oavatar_url {
+    my ( $self, $key, %options ) = @_;
+
+    my $url = Mojo::URL->new('https://avatar.theopencloset.net');
+    unless ($key) {
+        $url->path('/avatar/c21f969b5f03d33d43e04f8f136e7682');    # default
+        return "$url";
+    }
+
+    my $hex = md5_hex($key);
+    $url->path("/avatar/$hex");
+
+    if ( my $size = $options{size} ) {
+        $url->query( s => $size );
+    }
+
+    if ( my $default = $options{default} ) {
+        $url->query( d => $default );
+    }
+
+    return "$url";
 }
 
 1;
