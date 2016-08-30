@@ -8,3 +8,6 @@ requires 'Mojo::URL';
 requires 'Mojolicious';
 requires 'Parcel::Track';
 requires 'Try::Tiny';
+
+# cpan.theopencloset.net
+requires 'OpenCloset::Common';

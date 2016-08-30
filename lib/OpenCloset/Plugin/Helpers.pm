@@ -8,9 +8,12 @@ use Digest::MD5 qw/md5_hex/;
 use Email::Sender::Simple qw(sendmail);
 use Email::Sender::Transport::SMTP qw();
 use Mojo::ByteStream;
+use Mojo::DOM::HTML;
 use Mojo::URL;
 use Parcel::Track;
 use Try::Tiny;
+
+use OpenCloset::Constants::Status qw/$RENTAL $RENTABLE/;
 
 our $SMS_FROM = '07043257521';
 
@@ -48,6 +51,7 @@ sub register {
     $app->helper( send_mail    => \&send_mail );
     $app->helper( code2decimal => \&code2decimal );
     $app->helper( oavatar_url  => \&oavatar_url );
+    $app->helper( clothes2link => \&clothes2link );
 }
 
 =head1 HELPERS
@@ -320,6 +324,125 @@ sub oavatar_url {
     }
 
     return "$url";
+}
+
+=head2 clothes2link( $clothes, $opts )
+
+    %= clothes2link($clothes)
+    # <a href="/clothes/J001">
+    #   <span class="label label-primary">
+    #     <i class="fa fa-external-link"></i>
+    #     J001
+    #   </span>
+    # </a>
+
+    %= clothes2link($clothes, { with_status => 1, external => 1, class => ['label-success'] })    # external link with status
+    # <a href="/clothes/J001" target="_blank">
+    #   <span class="label label-primary">
+    #     <i class="fa fa-external-link"></i>
+    #     J001
+    #     <small>대여가능</small>
+    #   </span>
+    # </a>
+
+=head3 $opt
+
+외부링크로 제공하거나, 상태를 함께 표시할지 여부를 선택합니다.
+Default 는 모두 off 입니다.
+
+=over
+
+=item C<1>
+
+상태없이 외부링크로 나타냅니다.
+
+=item C<$hashref>
+
+=over
+
+=item C<$text>
+
+의류코드 대신에 나타낼 text.
+
+=item C<$with_status>
+
+상태도 함께 나타낼지에 대한 Bool.
+
+=item C<$external>
+
+외부링크로 제공할지에 대한 Bool.
+
+=item C<$class>
+
+label 태그에 추가될 css class.
+
+=back
+
+=back
+
+=cut
+
+sub clothes2link {
+    my ( $self, $clothes, $opts ) = @_;
+    return '' unless $clothes;
+
+    my $code = $clothes->code;
+    $code =~ s/^0//;
+    my $prefix = '/clothes';
+    my $dom    = Mojo::DOM::HTML->new;
+
+    my $html  = "$code";
+    my @class = qw/label/;
+    if ($opts) {
+        if ( ref $opts eq 'HASH' ) {
+            if ( my $text = $opts->{text} ) {
+                $html = $text;
+            }
+
+            if ( $opts->{with_status} ) {
+                my $status = $clothes->status;
+                my $name   = $status->name;
+                my $sid    = $status->id;
+                if ( $sid == $RENTABLE ) {
+                    push @class, 'label-primary';
+                }
+                elsif ( $sid == $RENTAL ) {
+                    push @class, 'label-danger';
+                }
+                else {
+                    push @class, 'label-default';
+                }
+                $html .= qq{ <small>$name</small>};
+            }
+            else {
+                push @class, 'label-primary' unless $opts->{class};
+            }
+
+            push @class, @{ $opts->{class} ||= [] };
+
+            if ( $opts->{external} ) {
+                $html = qq{<i class="fa fa-external-link"></i> } . $html;
+                $html = qq{<span class="@class">$html</span>};
+                $html = qq{<a href="$prefix/$code" target="_blank">$html</a>};
+            }
+            else {
+                $html = qq{<span class="@class">$html</span>};
+                $html = qq{<a href="$prefix/$code">$html</a>};
+            }
+        }
+        else {
+            $html = qq{<i class="fa fa-external-link"></i> } . $html;
+            $html = qq{<span class="@class">$html</span>};
+            $html = qq{<a href="$prefix/$code" target="_blank">$html</a>};
+        }
+    }
+    else {
+        $html = qq{<a href="$prefix/$code"><span class="@class">$html</span></a>};
+    }
+
+    $dom->parse($html);
+    my $tree = $dom->tree;
+    return Mojo::ByteStream->new( Mojo::DOM::HTML::_render($tree) );
 }
 
 1;
