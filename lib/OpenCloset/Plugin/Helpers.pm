@@ -4,6 +4,7 @@ use Mojo::Base 'Mojolicious::Plugin';
 
 use Config::INI::Reader;
 use Date::Holidays::KR ();
+use DateTime;
 use Digest::MD5 qw/md5_hex/;
 use Email::Sender::Simple qw(sendmail);
 use Email::Sender::Transport::SMTP qw();
@@ -43,15 +44,17 @@ sub register {
     my ( $self, $app, $conf ) = @_;
 
     $app->helper( log => sub { shift->app->log } );
-    $app->helper( error        => \&error );
-    $app->helper( parcel       => \&parcel );
-    $app->helper( sms          => \&sms );
-    $app->helper( holidays     => \&holidays );
-    $app->helper( footer       => \&footer );
-    $app->helper( send_mail    => \&send_mail );
-    $app->helper( code2decimal => \&code2decimal );
-    $app->helper( oavatar_url  => \&oavatar_url );
-    $app->helper( clothes2link => \&clothes2link );
+    $app->helper( error         => \&error );
+    $app->helper( parcel        => \&parcel );
+    $app->helper( sms           => \&sms );
+    $app->helper( holidays      => \&holidays );
+    $app->helper( footer        => \&footer );
+    $app->helper( send_mail     => \&send_mail );
+    $app->helper( code2decimal  => \&code2decimal );
+    $app->helper( oavatar_url   => \&oavatar_url );
+    $app->helper( clothes2link  => \&clothes2link );
+    $app->helper( age           => \&age );
+    $app->helper( recent_orders => \&recent_orders );
 }
 
 =head1 HELPERS
@@ -443,6 +446,63 @@ sub clothes2link {
     $dom->parse($html);
     my $tree = $dom->tree;
     return Mojo::ByteStream->new( Mojo::DOM::HTML::_render($tree) );
+}
+
+=head2 age
+
+    %= age(2000)
+    # 17
+
+=cut
+
+sub age {
+    my ( $self, $birth ) = @_;
+    my $now = DateTime->now;
+    return $now->year - $birth;
+}
+
+=head2 recent_orders
+
+Arguments: $order, $limit?
+Return: $resultset (scalar context) | @result_objs (list context)
+
+    my $orders = $c->recent_order($order);
+
+사용자의 C<$order> 를 제외한 최근 주문서를 찾습니다.
+C<$limit> 의 기본값은 C<5> 입니다.
+
+=cut
+
+sub recent_orders {
+    my ( $self, $order, $limit ) = @_;
+    return unless $order;
+
+    my $rs
+        = $order->user->search_related( 'orders', { -not => { id => $order->id } }, { order_by => { -desc => 'id' } } );
+
+    $limit = 5 unless $limit;
+    $rs->slice( 0, $limit - 1 );
+
+    my @orders;
+    while ( my $order = $rs->next ) {
+        my @details = $order->order_details;
+        next unless @details;
+
+        my $jpk;
+        for my $detail (@details) {
+            my $code = $detail->clothes_code;
+            next unless $code;
+            next unless $code =~ /^0?[JPK]/;
+
+            $jpk = 1;
+            last;
+        }
+
+        next unless $jpk;
+        push @orders, $order;
+    }
+
+    return \@orders;
 }
 
 1;
