@@ -319,11 +319,11 @@ sub oavatar_url {
     $url->path("/avatar/$hex");
 
     if ( my $size = $options{size} ) {
-        $url->query( s => $size );
+        $url->query( { s => $size } );
     }
 
     if ( my $default = $options{default} ) {
-        $url->query( d => $default );
+        $url->query( { d => $default } );
     }
 
     return "$url";
