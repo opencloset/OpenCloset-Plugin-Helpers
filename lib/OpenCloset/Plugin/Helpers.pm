@@ -16,7 +16,7 @@ use Try::Tiny;
 
 use OpenCloset::Constants::Status qw/$RENTAL $RENTABLE/;
 
-our $SMS_FROM = '07043257521';
+our $SMS_FROM = '0269291029';
 
 our $INTERVAL = 55;
 our %CHAR2DECIMAL;
