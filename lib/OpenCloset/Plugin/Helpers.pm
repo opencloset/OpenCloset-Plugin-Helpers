@@ -143,7 +143,7 @@ sub sms {
     return $schema->resultset('SMS')->create( { from => $from || $SMS_FROM, to => $to, text => $text } );
 }
 
-=head2 holidays( $year )
+=head2 holidays( @years )
 
 requires C<$ENV{OPENCLOSET_EXTRA_HOLIDAYS}> ini file path
 
@@ -151,26 +151,31 @@ requires C<$ENV{OPENCLOSET_EXTRA_HOLIDAYS}> ini file path
 
 =item $year - 4 digit string
 
-    my $hashref = $self->holidays(2016);    # KR holidays in 2016
+    my $hashref = $self->holidays(2016);          # KR holidays in 2016
+    my $hashref = $self->holidays(2016, 2017);    # KR holidays in 2016 and 2017
 
 =back
 
 =cut
 
 sub holidays {
-    my ( $self, $year ) = @_;
-    return unless $year;
+    my ( $self, @years ) = @_;
+    return unless @years;
 
-    my @holidays;
-    my $holidays = Date::Holidays::KR::holidays($year);
-    for my $mmdd ( keys %{ $holidays || {} } ) {
-        my $mm = substr $mmdd, 0, 2;
-        my $dd = substr $mmdd, 2;
-        push @holidays, "$year-$mm-$dd";
+    my $extra_holidays = {};
+    if ( my $ini = $ENV{OPENCLOSET_EXTRA_HOLIDAYS} ) {
+        $extra_holidays = Config::INI::Reader->read_file($ini);
     }
 
-    if ( my $ini = $ENV{OPENCLOSET_EXTRA_HOLIDAYS} ) {
-        my $extra_holidays = Config::INI::Reader->read_file($ini);
+    my @holidays;
+    for my $year (@years) {
+        my $holidays = Date::Holidays::KR::holidays($year);
+        for my $mmdd ( keys %{ $holidays || {} } ) {
+            my $mm = substr $mmdd, 0, 2;
+            my $dd = substr $mmdd, 2;
+            push @holidays, "$year-$mm-$dd";
+        }
+
         for my $mmdd ( keys %{ $extra_holidays->{$year} || {} } ) {
             my $mm = substr $mmdd, 0, 2;
             my $dd = substr $mmdd, 2;
