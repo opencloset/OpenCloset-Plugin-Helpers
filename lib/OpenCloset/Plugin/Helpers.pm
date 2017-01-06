@@ -4,15 +4,19 @@ use Mojo::Base 'Mojolicious::Plugin';
 
 use Config::INI::Reader;
 use Date::Holidays::KR ();
+use DateTime;
 use Digest::MD5 qw/md5_hex/;
 use Email::Sender::Simple qw(sendmail);
 use Email::Sender::Transport::SMTP qw();
 use Mojo::ByteStream;
+use Mojo::DOM::HTML;
 use Mojo::URL;
 use Parcel::Track;
 use Try::Tiny;
 
-our $SMS_FROM = '07043257521';
+use OpenCloset::Constants::Status qw/$RENTAL $RENTABLE/;
+
+our $SMS_FROM = '0269291029';
 
 our $INTERVAL = 55;
 our %CHAR2DECIMAL;
@@ -40,14 +44,17 @@ sub register {
     my ( $self, $app, $conf ) = @_;
 
     $app->helper( log => sub { shift->app->log } );
-    $app->helper( error        => \&error );
-    $app->helper( parcel       => \&parcel );
-    $app->helper( sms          => \&sms );
-    $app->helper( holidays     => \&holidays );
-    $app->helper( footer       => \&footer );
-    $app->helper( send_mail    => \&send_mail );
-    $app->helper( code2decimal => \&code2decimal );
-    $app->helper( oavatar_url  => \&oavatar_url );
+    $app->helper( error         => \&error );
+    $app->helper( parcel        => \&parcel );
+    $app->helper( sms           => \&sms );
+    $app->helper( holidays      => \&holidays );
+    $app->helper( footer        => \&footer );
+    $app->helper( send_mail     => \&send_mail );
+    $app->helper( code2decimal  => \&code2decimal );
+    $app->helper( oavatar_url   => \&oavatar_url );
+    $app->helper( clothes2link  => \&clothes2link );
+    $app->helper( age           => \&age );
+    $app->helper( recent_orders => \&recent_orders );
 }
 
 =head1 HELPERS
@@ -152,9 +159,6 @@ sub holidays {
     my ( $self, $year ) = @_;
     return unless $year;
 
-    my $ini = $self->app->static->file('misc/extra-holidays.ini');
-    my $extra_holidays = $ini->path ? Config::INI::Reader->read_file( $ini->path ) : {};
-
     my @holidays;
     my $holidays = Date::Holidays::KR::holidays($year);
     for my $mmdd ( keys %{ $holidays || {} } ) {
@@ -163,10 +167,13 @@ sub holidays {
         push @holidays, "$year-$mm-$dd";
     }
 
-    for my $mmdd ( keys %{ $extra_holidays->{$year} || {} } ) {
-        my $mm = substr $mmdd, 0, 2;
-        my $dd = substr $mmdd, 2;
-        push @holidays, "$year-$mm-$dd";
+    if ( my $ini = $ENV{OPENCLOSET_EXTRA_HOLIDAYS} ) {
+        my $extra_holidays = Config::INI::Reader->read_file($ini);
+        for my $mmdd ( keys %{ $extra_holidays->{$year} || {} } ) {
+            my $mm = substr $mmdd, 0, 2;
+            my $dd = substr $mmdd, 2;
+            push @holidays, "$year-$mm-$dd";
+        }
     }
 
     return sort @holidays;
@@ -312,14 +319,190 @@ sub oavatar_url {
     $url->path("/avatar/$hex");
 
     if ( my $size = $options{size} ) {
-        $url->query( s => $size );
+        $url->query( { s => $size } );
     }
 
     if ( my $default = $options{default} ) {
-        $url->query( d => $default );
+        $url->query( { d => $default } );
     }
 
     return "$url";
+}
+
+=head2 clothes2link( $clothes, $opts )
+
+    %= clothes2link($clothes)
+    # <a href="/clothes/J001">
+    #   <span class="label label-primary">
+    #     <i class="fa fa-external-link"></i>
+    #     J001
+    #   </span>
+    # </a>
+
+    %= clothes2link($clothes, { with_status => 1, external => 1, class => ['label-success'] })    # external link with status
+    # <a href="/clothes/J001" target="_blank">
+    #   <span class="label label-primary">
+    #     <i class="fa fa-external-link"></i>
+    #     J001
+    #     <small>대여가능</small>
+    #   </span>
+    # </a>
+
+=head3 $opt
+
+외부링크로 제공하거나, 상태를 함께 표시할지 여부를 선택합니다.
+Default 는 모두 off 입니다.
+
+=over
+
+=item C<1>
+
+상태없이 외부링크로 나타냅니다.
+
+=item C<$hashref>
+
+=over
+
+=item C<$text>
+
+의류코드 대신에 나타낼 text.
+
+=item C<$with_status>
+
+상태도 함께 나타낼지에 대한 Bool.
+
+=item C<$external>
+
+외부링크로 제공할지에 대한 Bool.
+
+=item C<$class>
+
+label 태그에 추가될 css class.
+
+=back
+
+=back
+
+=cut
+
+sub clothes2link {
+    my ( $self, $clothes, $opts ) = @_;
+    return '' unless $clothes;
+
+    my $code = $clothes->code;
+    $code =~ s/^0//;
+    my $prefix = '/clothes';
+    my $dom    = Mojo::DOM::HTML->new;
+
+    my $html  = "$code";
+    my @class = qw/label/;
+    if ($opts) {
+        if ( ref $opts eq 'HASH' ) {
+            if ( my $text = $opts->{text} ) {
+                $html = $text;
+            }
+
+            if ( $opts->{with_status} ) {
+                my $status = $clothes->status;
+                my $name   = $status->name;
+                my $sid    = $status->id;
+                if ( $sid == $RENTABLE ) {
+                    push @class, 'label-primary';
+                }
+                elsif ( $sid == $RENTAL ) {
+                    push @class, 'label-danger';
+                }
+                else {
+                    push @class, 'label-default';
+                }
+                $html .= qq{ <small>$name</small>};
+            }
+            else {
+                push @class, 'label-primary' unless $opts->{class};
+            }
+
+            push @class, @{ $opts->{class} ||= [] };
+
+            if ( $opts->{external} ) {
+                $html = qq{<i class="fa fa-external-link"></i> } . $html;
+                $html = qq{<span class="@class">$html</span>};
+                $html = qq{<a href="$prefix/$code" target="_blank">$html</a>};
+            }
+            else {
+                $html = qq{<span class="@class">$html</span>};
+                $html = qq{<a href="$prefix/$code">$html</a>};
+            }
+        }
+        else {
+            $html = qq{<i class="fa fa-external-link"></i> } . $html;
+            $html = qq{<span class="@class">$html</span>};
+            $html = qq{<a href="$prefix/$code" target="_blank">$html</a>};
+        }
+    }
+    else {
+        $html = qq{<a href="$prefix/$code"><span class="@class">$html</span></a>};
+    }
+
+    $dom->parse($html);
+    my $tree = $dom->tree;
+    return Mojo::ByteStream->new( Mojo::DOM::HTML::_render($tree) );
+}
+
+=head2 age
+
+    %= age(2000)
+    # 17
+
+=cut
+
+sub age {
+    my ( $self, $birth ) = @_;
+    my $now = DateTime->now;
+    return $now->year - $birth;
+}
+
+=head2 recent_orders
+
+Arguments: $order, $limit?
+Return: $resultset (scalar context) | @result_objs (list context)
+
+    my $orders = $c->recent_order($order);
+
+사용자의 C<$order> 를 제외한 최근 주문서를 찾습니다.
+C<$limit> 의 기본값은 C<5> 입니다.
+
+=cut
+
+sub recent_orders {
+    my ( $self, $order, $limit ) = @_;
+    return unless $order;
+
+    my $rs
+        = $order->user->search_related( 'orders', { -not => { id => $order->id } }, { order_by => { -desc => 'id' } } );
+
+    $limit = 5 unless $limit;
+    $rs->slice( 0, $limit - 1 );
+
+    my @orders;
+    while ( my $order = $rs->next ) {
+        my @details = $order->order_details;
+        next unless @details;
+
+        my $jpk;
+        for my $detail (@details) {
+            my $code = $detail->clothes_code;
+            next unless $code;
+            next unless $code =~ /^0?[JPK]/;
+
+            $jpk = 1;
+            last;
+        }
+
+        next unless $jpk;
+        push @orders, $order;
+    }
+
+    return \@orders;
 }
 
 1;
