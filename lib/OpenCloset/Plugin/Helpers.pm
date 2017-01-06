@@ -159,9 +159,6 @@ sub holidays {
     my ( $self, $year ) = @_;
     return unless $year;
 
-    my $ini = $self->app->static->file('misc/extra-holidays.ini');
-    my $extra_holidays = $ini->path ? Config::INI::Reader->read_file( $ini->path ) : {};
-
     my @holidays;
     my $holidays = Date::Holidays::KR::holidays($year);
     for my $mmdd ( keys %{ $holidays || {} } ) {
@@ -170,10 +167,13 @@ sub holidays {
         push @holidays, "$year-$mm-$dd";
     }
 
-    for my $mmdd ( keys %{ $extra_holidays->{$year} || {} } ) {
-        my $mm = substr $mmdd, 0, 2;
-        my $dd = substr $mmdd, 2;
-        push @holidays, "$year-$mm-$dd";
+    if ( my $ini = $ENV{OPENCLOSET_EXTRA_HOLIDAYS} ) {
+        my $extra_holidays = Config::INI::Reader->read_file($ini);
+        for my $mmdd ( keys %{ $extra_holidays->{$year} || {} } ) {
+            my $mm = substr $mmdd, 0, 2;
+            my $dd = substr $mmdd, 2;
+            push @holidays, "$year-$mm-$dd";
+        }
     }
 
     return sort @holidays;

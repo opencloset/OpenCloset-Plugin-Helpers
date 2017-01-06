@@ -3,6 +3,7 @@
   - Add helper recent_orders
   - Fix oavatar_url helper query overwrite bug
   - Replace sms from number 07075837521 to 0269291029
+  - 하드코딩된 임시공휴일 파일 경로의 수정 (#3)
 
 v0.0.7    Thu, 23 Jun 2016 11:24:11 +0900
   - add helper oavatar_url
