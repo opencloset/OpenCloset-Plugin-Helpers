@@ -145,6 +145,8 @@ sub sms {
 
 =head2 holidays( $year )
 
+requires C<$ENV{OPENCLOSET_EXTRA_HOLIDAYS}> ini file path
+
 =over
 
 =item $year - 4 digit string
