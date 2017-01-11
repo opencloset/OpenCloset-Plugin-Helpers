@@ -213,7 +213,7 @@ sub footer {
               <br>
               전자우편 info\@theopencloset.net
               <br>
-              전화 070-4325-7521
+              전화 02-6929-1029
               <br>
               <a href="https://www.theopencloset.net/terms" target="_blank">이용약관</a>
               <a href="https://www.theopencloset.net/privacy" target="_blank">개인정보취급방침</a>
