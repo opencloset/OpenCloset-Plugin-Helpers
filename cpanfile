@@ -1,3 +1,4 @@
+requires 'Algorithm::CouponCode';
 requires 'Config::INI::Reader';
 requires 'Date::Holidays::KR';
 requires 'DateTime';
