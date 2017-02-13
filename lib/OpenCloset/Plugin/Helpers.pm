@@ -2,6 +2,7 @@ package OpenCloset::Plugin::Helpers;
 
 use Mojo::Base 'Mojolicious::Plugin';
 
+use Algorithm::CouponCode qw(cc_validate);
 use Config::INI::Reader;
 use Date::Holidays::KR ();
 use DateTime;
@@ -44,17 +45,20 @@ sub register {
     my ( $self, $app, $conf ) = @_;
 
     $app->helper( log => sub { shift->app->log } );
-    $app->helper( error         => \&error );
-    $app->helper( parcel        => \&parcel );
-    $app->helper( sms           => \&sms );
-    $app->helper( holidays      => \&holidays );
-    $app->helper( footer        => \&footer );
-    $app->helper( send_mail     => \&send_mail );
-    $app->helper( code2decimal  => \&code2decimal );
-    $app->helper( oavatar_url   => \&oavatar_url );
-    $app->helper( clothes2link  => \&clothes2link );
-    $app->helper( age           => \&age );
-    $app->helper( recent_orders => \&recent_orders );
+    $app->helper( error           => \&error );
+    $app->helper( parcel          => \&parcel );
+    $app->helper( sms             => \&sms );
+    $app->helper( holidays        => \&holidays );
+    $app->helper( footer          => \&footer );
+    $app->helper( send_mail       => \&send_mail );
+    $app->helper( code2decimal    => \&code2decimal );
+    $app->helper( oavatar_url     => \&oavatar_url );
+    $app->helper( clothes2link    => \&clothes2link );
+    $app->helper( age             => \&age );
+    $app->helper( recent_orders   => \&recent_orders );
+    $app->helper( transfer_order  => \&transfer_order );
+    $app->helper( coupon_validate => \&coupon_validate );
+    $app->helper( commify         => \&commify );
 }
 
 =head1 HELPERS
@@ -510,6 +514,99 @@ sub recent_orders {
     }
 
     return \@orders;
+}
+
+=head2 transfer_order($coupon, $order)
+
+    $self->transfer_order( $coupon, $order );
+
+=cut
+
+sub transfer_order {
+    my ( $self, $coupon, $to ) = @_;
+    return unless $coupon;
+
+    my $code = $coupon->code;
+    my $status = $coupon->status || '';
+
+    if ( $status =~ m/(us|discard|expir)ed/ ) {
+        $self->log->info("Coupon is not valid: $code($status)");
+        return;
+    }
+    elsif ( $status eq 'reserved' ) {
+        my $orders = $coupon->orders;
+        unless ( $orders->count ) {
+            $self->log->warn("It is reserved coupon, but the order can not be found: $code");
+        }
+
+        while ( my $order = $orders->next ) {
+            my $order_id = $order->id;
+            $self->log->info("Delete coupon_id from existing order($order_id): $code");
+            $order->update( { coupon_id => undef } );
+        }
+
+        if ($to) {
+            $self->log->info( sprintf( "Now, use coupon(%d) in order(%d)", $coupon->id, $to->id ) );
+            $to->update( { coupon_id => $coupon->id } );
+        }
+    }
+    elsif ( $status eq 'provided' || $status eq '' ) {
+        $coupon->update( { status => 'reserved' } );
+        if ($to) {
+            $self->log->info( sprintf( "Now, use coupon(%d) in order(%d)", $coupon->id, $to->id ) );
+            $to->update( { coupon_id => $coupon->id } );
+        }
+    }
+
+    return 1;
+}
+
+=head2 coupon_validate
+
+    my ($coupon, $error) = $self->coupon_validate('JY1P-ER09-BEP1');
+
+=cut
+
+sub coupon_validate {
+    my ( $self, $code ) = @_;
+
+    my $schema = $self->app->can('DB') ? $self->app->DB : $self->app->schema;
+    return unless $schema;
+
+    my $valid_code = cc_validate( code => $code, parts => 3 );
+    return ( undef, '유효하지 않은 코드 입니다' ) unless $valid_code;
+
+    my $coupon = $schema->resultset('Coupon')->find( { code => $valid_code } );
+    return ( undef, '없는 쿠폰 입니다' ) unless $coupon;
+
+    if ( my $coupon_status = $coupon->status ) {
+        return ( undef, "사용할 수 없는 쿠폰입니다: $coupon_status" )
+            if $coupon_status =~ m/(us|discard|expir)ed/;
+        $self->transfer_order($coupon);
+    }
+
+    if ( my $expires = $coupon->expires_date ) {
+        if ( $expires->epoch < DateTime->now->epoch ) {
+            $self->log->info("coupon is expired: $valid_code");
+            $coupon->update( { status => 'expired' } );
+            return ( undef, '유효기간이 지난 쿠폰입니다' );
+        }
+    }
+
+    return $coupon;
+}
+
+=head2 commify
+
+    commify(1000000);    # 1,000,000
+
+=cut
+
+sub commify {
+    my $self = shift;
+    local $_ = shift;
+    1 while s/((?:\A|[^.0-9])[-+]?\d+)(\d{3})/$1,$2/s;
+    return $_;
 }
 
 1;
