@@ -579,7 +579,8 @@ sub coupon_validate {
     return ( undef, '없는 쿠폰 입니다' ) unless $coupon;
 
     if ( my $coupon_status = $coupon->status ) {
-        return ( undef, '사용할 수 없는 쿠폰입니다' ) if $coupon_status =~ m/(us|discard|expir)ed/;
+        return ( undef, "사용할 수 없는 쿠폰입니다: $coupon_status" )
+            if $coupon_status =~ m/(us|discard|expir)ed/;
         $self->transfer_order($coupon);
     }
 
