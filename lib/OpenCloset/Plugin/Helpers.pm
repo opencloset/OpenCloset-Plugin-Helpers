@@ -58,6 +58,7 @@ sub register {
     $app->helper( recent_orders   => \&recent_orders );
     $app->helper( transfer_order  => \&transfer_order );
     $app->helper( coupon_validate => \&coupon_validate );
+    $app->helper( commify         => \&commify );
 }
 
 =head1 HELPERS
@@ -593,6 +594,19 @@ sub coupon_validate {
     }
 
     return $coupon;
+}
+
+=head2 commify
+
+    commify(1000000);    # 1,000,000
+
+=cut
+
+sub commify {
+    my $self = shift;
+    local $_ = shift;
+    1 while s/((?:\A|[^.0-9])[-+]?\d+)(\d{3})/$1,$2/s;
+    return $_;
 }
 
 1;
