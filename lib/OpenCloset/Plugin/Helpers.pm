@@ -569,7 +569,7 @@ sub transfer_order {
 sub coupon_validate {
     my ( $self, $code ) = @_;
 
-    my $schema = $self->app->has('DB') ? $self->app->DB : $self->app->schema;
+    my $schema = $self->app->can('DB') ? $self->app->DB : $self->app->schema;
     return unless $schema;
 
     my $valid_code = cc_validate( code => $code, parts => 3 );
