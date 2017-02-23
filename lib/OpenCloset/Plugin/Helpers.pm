@@ -539,15 +539,45 @@ sub transfer_order {
             $self->log->warn("It is reserved coupon, but the order can not be found: $code");
         }
 
+        my @orders;
         while ( my $order = $orders->next ) {
-            my $order_id = $order->id;
-            $self->log->info("Delete coupon_id from existing order($order_id): $code");
-            $order->update( { coupon_id => undef } );
+            my $order_id  = $order->id;
+            my $coupon_id = $order->coupon_id;
+            $self->log->info(
+                sprintf( "Delete coupon_id(%d) from existing order(%d): %s", $order->coupon_id, $order->id, $code ) );
+            my $return_memo = $order->return_memo;
+            $return_memo .= "\n" if $return_memo;
+            $return_memo
+                .= sprintf(
+                "쿠폰의 중복된 요청으로 주문서(%d) 에서 쿠폰(%d)이 삭제되었습니다: %s",
+                $order->id, $order->coupon_id, $code );
+            $order->update( { coupon_id => undef, return_memo => $return_memo } );
+
+            push @orders, $order->id;
         }
 
         if ($to) {
-            $self->log->info( sprintf( "Now, use coupon(%d) in order(%d)", $coupon->id, $to->id ) );
-            $to->update( { coupon_id => $coupon->id } );
+            my $return_memo = $to->return_memo;
+            if (@orders) {
+                $self->log->info(
+                    sprintf(
+                        "Now, use coupon(%d) in order(%d) %s instead",
+                        $coupon->id, $to->id, join( ', ', @orders )
+                    )
+                );
+
+                $return_memo .= "\n" if $return_memo;
+                $return_memo .= sprintf(
+                    "%s 에서 사용된 쿠폰(%d)이 주문서(%d)에 사용됩니다: %s",
+                    join( ', ', @orders ),
+                    $coupon->id, $to->id, $code
+                );
+            }
+            else {
+                $self->log->info( sprintf( "Now, use coupon(%d) in order(%d)", $coupon->id, $to->id ) );
+            }
+
+            $to->update( { coupon_id => $coupon->id, return_memo => $return_memo } );
         }
     }
     elsif ( $status eq 'provided' || $status eq '' ) {
