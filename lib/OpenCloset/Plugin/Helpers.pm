@@ -236,7 +236,7 @@ sub footer {
             <ul class="list-inline">
               <li><a href="https://twitter.com/openclosetnet/"><i class="fa fa-2x fa-twitter-square"></i></a></li>
               <li><a href="https://www.facebook.com/TheOpenCloset/"><i class="fa fa-2x fa-facebook-square"></i></a></li>
-              <li><a href="https://www.instagram.com/opencloset_story/"><i class="fa fa-2x fa-instagram"></i></a></li>
+              <li><a href="https://www.instagram.com/opencloset_people/"><i class="fa fa-2x fa-instagram"></i></a></li>
               <li><a href="http://theopencloset.tistory.com/"><i class="fa fa-2x fa-rss-square"></i></a></li>
             </ul>
           </div>
