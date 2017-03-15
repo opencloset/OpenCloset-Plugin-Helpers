@@ -13,6 +13,8 @@ use Mojo::ByteStream;
 use Mojo::DOM::HTML;
 use Mojo::URL;
 use Parcel::Track;
+use String::Random;
+use Time::HiRes;
 use Try::Tiny;
 
 use OpenCloset::Constants::Status qw/$RENTAL $RENTABLE/;
@@ -59,6 +61,7 @@ sub register {
     $app->helper( transfer_order  => \&transfer_order );
     $app->helper( coupon_validate => \&coupon_validate );
     $app->helper( commify         => \&commify );
+    $app->helper( merchant_uid    => \&merchant_uid );
 }
 
 =head1 HELPERS
@@ -637,6 +640,27 @@ sub commify {
     local $_ = shift;
     1 while s/((?:\A|[^.0-9])[-+]?\d+)(\d{3})/$1,$2/s;
     return $_;
+}
+
+=head2 merchant_uid
+
+    # merchant-1484777630841-Wfg
+    # same as javascript: merchant-' + new Date().getTime() + "-<random_3_chars>"
+    my $merchant_uid = $self->merchant_uid;
+
+    # opencloset-share-3-1484777630841-D8d
+    my $merchant_uid = $self->merchant_uid( "opencloset-share-%d-", $order->id );
+
+=cut
+
+sub merchant_uid {
+    my ( $self, $prefix_fmt, @prefix_params ) = @_;
+
+    my $prefix = $prefix_fmt ? sprintf( $prefix_fmt, @prefix_params ) : "merchant_";
+    my ( $seconds, $microseconds ) = Time::HiRes::gettimeofday;
+    my $random = String::Random->new->randregex(q{-\w\w\w});
+
+    return $prefix . $seconds . $microseconds . $random;
 }
 
 1;
