@@ -228,7 +228,7 @@ sub footer {
             <ul class="list-inline">
               <li><a href="https://theopencloset.net/">홈페이지</a></li>
               <li><a href="https://visit.theopencloset.net/">방문 예약</a></li>
-              <li><a href="https://online.theopencloset.net/">온라인 예약</a></li>
+              <li><a href="https://share.theopencloset.net/welcome/">온라인 예약</a></li>
             </ul>
           </div>
           <div class="col-md-3">
