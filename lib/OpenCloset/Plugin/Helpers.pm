@@ -141,7 +141,7 @@ sub sms {
     return unless $to;
     return unless $text;
 
-    my $schema = $self->app->schema;
+    my $schema = $self->app->can('DB') ? $self->app->DB : $self->app->schema;
     return unless $schema;
 
     return $schema->resultset('SMS')->create( { from => $from || $SMS_FROM, to => $to, text => $text } );
