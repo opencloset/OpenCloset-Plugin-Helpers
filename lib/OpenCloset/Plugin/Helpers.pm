@@ -141,7 +141,7 @@ sub sms {
     return unless $to;
     return unless $text;
 
-    my $schema = $self->app->schema;
+    my $schema = $self->app->can('DB') ? $self->app->DB : $self->app->schema;
     return unless $schema;
 
     return $schema->resultset('SMS')->create( { from => $from || $SMS_FROM, to => $to, text => $text } );
@@ -228,7 +228,7 @@ sub footer {
             <ul class="list-inline">
               <li><a href="https://theopencloset.net/">홈페이지</a></li>
               <li><a href="https://visit.theopencloset.net/">방문 예약</a></li>
-              <li><a href="https://online.theopencloset.net/">온라인 예약</a></li>
+              <li><a href="https://share.theopencloset.net/welcome/">온라인 예약</a></li>
             </ul>
           </div>
           <div class="col-md-3">
