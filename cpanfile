@@ -9,6 +9,8 @@ requires 'Mojo::ByteStream';
 requires 'Mojo::URL';
 requires 'Mojolicious';
 requires 'Parcel::Track';
+requires 'String::Random';
+requires 'Time::HiRes';
 requires 'Try::Tiny';
 
 # cpan.theopencloset.net
