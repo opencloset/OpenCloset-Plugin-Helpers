@@ -1,3 +1,8 @@
+v0.0.15   Tue, 28 Mar 2017 14:32:08 +0900
+  - footer 의 온라인 예약 링크 수정 (#9)
+  - staff 서비스에서 동작하지 않는 sms 헬퍼 오류 수정 (#10)
+  - migrate merchant_uid from share
+
 v0.0.14   Wed, 08 Mar 2017 14:24:18 +0900
   - footer 의 잘못된 SNS 링크 수정 (#7)
 
