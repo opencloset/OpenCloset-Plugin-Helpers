@@ -475,24 +475,34 @@ sub age {
     return $now->year - $birth;
 }
 
-=head2 recent_orders
-
-Arguments: $order, $limit?
-Return: $resultset (scalar context) | @result_objs (list context)
+=head2 recent_orders( $order_or_$user, $limit? )
 
     my $orders = $c->recent_order($order);
+    my $orders = $c->recent_order($user);
 
-사용자의 C<$order> 를 제외한 최근 주문서를 찾습니다.
+사용자(C<$user>)의 C<$order> 를 제외한 최근 주문서를 찾습니다.
 C<$limit> 의 기본값은 C<5> 입니다.
 
 =cut
 
 sub recent_orders {
-    my ( $self, $order, $limit ) = @_;
-    return unless $order;
+    my ( $self, $user_or_order, $limit ) = @_;
+    return unless $user_or_order;
 
-    my $rs
-        = $order->user->search_related( 'orders', { -not => { id => $order->id } }, { order_by => { -desc => 'id' } } );
+    my ( $user, $order, $cond );
+    my $ref = ref $user_or_order;
+    if ( $ref =~ m/User/ ) {
+        ## OpenCloset::Schema::Result::User
+        $user = $user_or_order;
+    }
+    elsif ( $ref =~ m/Order/ ) {
+        ## OpenCloset::Schema::Result::Order
+        $order = $user_or_order;
+        $user  = $order->user;
+        $cond  = { -not => { id => $order->id } };
+    }
+
+    my $rs = $user->search_related( 'orders', $cond, { order_by => { -desc => 'id' } } );
 
     $limit = 5 unless $limit;
     $rs->slice( 0, $limit - 1 );
