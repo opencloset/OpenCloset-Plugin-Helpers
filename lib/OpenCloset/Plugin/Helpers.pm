@@ -13,11 +13,10 @@ use Mojo::ByteStream;
 use Mojo::DOM::HTML;
 use Mojo::URL;
 use Parcel::Track;
-use String::Random;
-use Time::HiRes;
 use Try::Tiny;
 
 use OpenCloset::Constants::Status qw/$RENTAL $RENTABLE/;
+use OpenCloset::Common::Unpaid qw/merchant_uid/;
 
 our $SMS_FROM = '0269291029';
 
@@ -61,7 +60,7 @@ sub register {
     $app->helper( transfer_order  => \&transfer_order );
     $app->helper( coupon_validate => \&coupon_validate );
     $app->helper( commify         => \&commify );
-    $app->helper( merchant_uid    => \&merchant_uid );
+    $app->helper( merchant_uid    => \&_merchant_uid );
 }
 
 =head1 HELPERS
@@ -652,7 +651,7 @@ sub commify {
     return $_;
 }
 
-=head2 merchant_uid
+=head2 _merchant_uid
 
 타임스탬프와 임의의 문자를 포함한 거래 식별코드를 생성합니다. iamport 거래
 식별코드가 총 40자 제한이 있고, 타임스탬프 등의 문자가 20자이므로 사용자가
@@ -667,16 +666,9 @@ sub commify {
 
 =cut
 
-sub merchant_uid {
+sub _merchant_uid {
     my ( $self, $prefix_fmt, @prefix_params ) = @_;
-
-    my $prefix = $prefix_fmt ? sprintf( $prefix_fmt, @prefix_params ) : "merchant_";
-    return unless length($prefix) < 20;
-
-    my ( $seconds, $microseconds ) = Time::HiRes::gettimeofday;
-    my $random = String::Random->new->randregex(q{-\w\w\w});
-
-    return $prefix . $seconds . $microseconds . $random;
+    return merchant_uid( $prefix_fmt, @prefix_params );
 }
 
 1;
