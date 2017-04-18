@@ -14,4 +14,4 @@ requires 'Time::HiRes';
 requires 'Try::Tiny';
 
 # cpan.theopencloset.net
-requires 'OpenCloset::Common';
+requires 'OpenCloset::Common', 'v0.0.17';

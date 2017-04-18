@@ -1,3 +1,5 @@
+  - OpenCloset::Common::Unpaid::merchant_uid 를 사용
+
 v0.0.16   Wed, 05 Apr 2017 15:44:14 +0900
   - recent_orders helper 가 `$user` 를 arg 로 받을 수 있도록 수정
 
