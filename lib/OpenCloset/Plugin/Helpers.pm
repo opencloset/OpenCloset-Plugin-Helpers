@@ -61,6 +61,7 @@ sub register {
     $app->helper( coupon_validate => \&coupon_validate );
     $app->helper( commify         => \&commify );
     $app->helper( merchant_uid    => \&_merchant_uid );
+    $app->helper( discount_order  => \&discount_order );
 }
 
 =head1 HELPERS
@@ -669,6 +670,90 @@ sub commify {
 sub _merchant_uid {
     my ( $self, $prefix_fmt, @prefix_params ) = @_;
     return merchant_uid( $prefix_fmt, @prefix_params );
+}
+
+=head2 discount_order( $order )
+
+C<$order> 에 C<$order-E<gt>coupon>의 할인금액을 적용합니다.
+suit 타입의 쿠폰에 대해서는 적용되지 않습니다.
+이미 적용되어있다면 무시합니다.
+
+  +--------+----------+--------------+-----------+---------------+-------+-------------+-------+------+----------+---------------------+
+  | id     | order_id | clothes_code | status_id | name          | price | final_price | stage | desc | pay_with | create_date         |
+  +--------+----------+--------------+-----------+---------------+-------+-------------+-------+------+----------+---------------------+
+  | 318434 |    58025 | 0J003        |        19 | J003 - 재킷   | 10000 |       10000 |     0 | NULL | NULL     | 2017-04-25 18:06:00 |
+  | 318435 |    58025 | 0P181        |        19 | P181 - 바지   | 10000 |       10000 |     0 | NULL | NULL     | 2017-04-25 18:06:00 |
+  | 318436 |    58025 | NULL         |      NULL | 배송비        |     0 |           0 |     0 | NULL | NULL     | 2017-04-25 18:06:00 |
+  | 318437 |    58025 | NULL         |      NULL | 에누리        |     0 |           0 |     0 | NULL | NULL     | 2017-04-25 18:06:00 |
+  +--------+----------+--------------+-----------+---------------+-------+-------------+-------+------+----------+---------------------+
+
+  $self->transfer_order($coupon, $order);
+  $self->discount_order($order);
+
+  +--------+----------+--------------+-----------+---------------+-------+-------------+-------+------+----------+---------------------+
+  | id     | order_id | clothes_code | status_id | name          | price | final_price | stage | desc | pay_with | create_date         |
+  +--------+----------+--------------+-----------+---------------+-------+-------------+-------+------+----------+---------------------+
+  | 318434 |    58025 | 0J003        |        19 | J003 - 재킷   | 10000 |       10000 |     0 | NULL | NULL     | 2017-04-25 18:06:00 |
+  | ...... |    ..... | .....        |        .. | .... . ..    | ..... |       ..... |     . | .... | ....     | .......... ........ |
+  | 318438 |    58025 | NULL         |      NULL | 30% 할인쿠폰   | -6000 |       -6000 |     0 | NULL | NULL     | 2017-04-25 18:06:00 |
+  +--------+----------+--------------+-----------+---------------+-------+-------------+-------+------+----------+---------------------+
+
+or
+
+  +--------+----------+--------------+-----------+-----------------+--------+-------------+-------+------+----------+---------------------+
+  | id     | order_id | clothes_code | status_id | name            | price  | final_price | stage | desc | pay_with | create_date         |
+  +--------+----------+--------------+-----------+-----------------+--------+-------------+-------+------+----------+---------------------+
+  | 318434 |    58025 | 0J003        |        19 | J003 - 재킷      |  10000 |       10000 |     0 | NULL | NULL     | 2017-04-25 18:06:00 |
+  | ...... |    ..... | .....        |        .. | .... . ..       |  ..... |       ..... |     . | .... | ....     | .......... ........ |
+  | 318438 |    58025 | NULL         |      NULL | 10,000원 할인쿠폰 | -10000 |     -10000  |     0 | NULL | NULL     | 2017-04-25 18:06:00 |
+  +--------+----------+--------------+-----------+-----------------+--------+-------------+-------+------+----------+---------------------+
+
+=cut
+
+sub discount_order {
+    my ( $self, $order ) = @_;
+    return unless $order;
+
+    my $coupon = $order->coupon;
+    return unless $coupon;
+
+    my $type = $coupon->type;
+    return 1 if $type eq 'suit';
+
+    my $rs = $order->order_details( { name => { -like => '%쿠폰%' } }, { rows => 1 } );
+    return 1 if $rs->count;
+
+    if ( $type eq 'default' ) {
+        my $price = $coupon->price;
+        $order->create_related(
+            'order_details',
+            {
+                name        => sprintf( "%s원 할인쿠폰", $self->commify($price) ),
+                price       => $price * -1,
+                final_price => $price * -1,
+            }
+        );
+    }
+    elsif ( $type eq 'rate' ) {
+        my $rate = $coupon->price;
+        my ( $price, $final_price ) = ( 0, 0 );
+        my $details = $order->order_details( { clothes_code => { '!=' => undef } } );
+        while ( my $od = $details->next ) {
+            $price       += $od->price;
+            $final_price += $od->final_price;
+        }
+
+        $order->create_related(
+            'order_details',
+            {
+                name        => sprintf( "%d%% 할인쿠폰", $rate ),
+                price       => ( $price * $rate / 100 ) * -1,
+                final_price => ( $final_price * $rate / 100 ) * -1,
+            }
+        );
+    }
+
+    return 1;
 }
 
 1;
