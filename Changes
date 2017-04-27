@@ -1,3 +1,7 @@
+v0.0.19   Thu, 27 Apr 2017 16:30:53 +0900
+  - 쿠폰의 상태에 따라 주문서의 할인을 적용
+  - discount_order helper 가 온라인 주문서를 지원
+
 v0.0.18   Wed, 26 Apr 2017 19:01:16 +0900
   - Add helper: discount_order
 

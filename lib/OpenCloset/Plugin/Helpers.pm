@@ -15,7 +15,8 @@ use Mojo::URL;
 use Parcel::Track;
 use Try::Tiny;
 
-use OpenCloset::Constants::Status qw/$RENTAL $RENTABLE/;
+use OpenCloset::Constants::Status
+    qw/$RENTAL $RENTABLE $CHOOSE_CLOTHES $CHOOSE_ADDRESS $PAYMENT $PAYMENT_DONE $WAITING_DEPOSIT $PAYBACK/;
 use OpenCloset::Common::Unpaid qw/merchant_uid/;
 
 our $SMS_FROM = '0269291029';
@@ -717,11 +718,14 @@ sub discount_order {
     my $coupon = $order->coupon;
     return unless $coupon;
 
+    my $coupon_status = $coupon->status || '';
+    return if $coupon_status =~ m/(us|discard|expir)ed/;
+
     my $type = $coupon->type;
-    return 1 if $type eq 'suit';
+    return if $type eq 'suit';
 
     my $rs = $order->order_details( { name => { -like => '%쿠폰%' } }, { rows => 1 } );
-    return 1 if $rs->count;
+    return if $rs->count;
 
     if ( $type eq 'default' ) {
         my $price = $coupon->price;
@@ -737,10 +741,35 @@ sub discount_order {
     elsif ( $type eq 'rate' ) {
         my $rate = $coupon->price;
         my ( $price, $final_price ) = ( 0, 0 );
-        my $details = $order->order_details( { clothes_code => { '!=' => undef } } );
-        while ( my $od = $details->next ) {
-            $price       += $od->price;
-            $final_price += $od->final_price;
+
+        if ( $order->online ) {
+            my $status_id = $order->status_id;
+            if ( "$CHOOSE_CLOTHES $CHOOSE_ADDRESS $PAYMENT $PAYMENT_DONE $WAITING_DEPOSIT $PAYBACK"
+                =~ m/\b$status_id\b/ )
+            {
+                my $details = $order->order_details;
+                while ( my $detail = $details->next ) {
+                    my $name = $detail->name;
+                    next unless $name =~ m/^[a-z]/;
+
+                    $price       += $detail->price;
+                    $final_price += $detail->final_price;
+                }
+            }
+            else {
+                my $details = $order->order_details( { clothes_code => { '!=' => undef } } );
+                while ( my $detail = $details->next ) {
+                    $price       += $detail->price;
+                    $final_price += $detail->final_price;
+                }
+            }
+        }
+        else {
+            my $details = $order->order_details( { clothes_code => { '!=' => undef } } );
+            while ( my $od = $details->next ) {
+                $price       += $od->price;
+                $final_price += $od->final_price;
+            }
         }
 
         $order->create_related(
@@ -749,6 +778,7 @@ sub discount_order {
                 name        => sprintf( "%d%% 할인쿠폰", $rate ),
                 price       => ( $price * $rate / 100 ) * -1,
                 final_price => ( $final_price * $rate / 100 ) * -1,
+                desc        => 'additional',
             }
         );
     }
