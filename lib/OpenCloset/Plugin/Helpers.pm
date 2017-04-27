@@ -717,11 +717,13 @@ sub discount_order {
     my $coupon = $order->coupon;
     return unless $coupon;
 
+    return if $coupon->status =~ m/(us|discard|expir)ed/;
+
     my $type = $coupon->type;
-    return 1 if $type eq 'suit';
+    return if $type eq 'suit';
 
     my $rs = $order->order_details( { name => { -like => '%쿠폰%' } }, { rows => 1 } );
-    return 1 if $rs->count;
+    return if $rs->count;
 
     if ( $type eq 'default' ) {
         my $price = $coupon->price;
