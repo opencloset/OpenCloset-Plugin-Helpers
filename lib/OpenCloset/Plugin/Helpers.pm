@@ -739,10 +739,12 @@ sub discount_order {
         );
     }
     elsif ( $type eq 'rate' ) {
+        my $desc = '';
         my $rate = $coupon->price;
         my ( $price, $final_price ) = ( 0, 0 );
 
         if ( $order->online ) {
+            $desc = 'additional';
             my $status_id = $order->status_id;
             if ( "$CHOOSE_CLOTHES $CHOOSE_ADDRESS $PAYMENT $PAYMENT_DONE $WAITING_DEPOSIT $PAYBACK"
                 =~ m/\b$status_id\b/ )
@@ -778,7 +780,7 @@ sub discount_order {
                 name        => sprintf( "%d%% 할인쿠폰", $rate ),
                 price       => ( $price * $rate / 100 ) * -1,
                 final_price => ( $final_price * $rate / 100 ) * -1,
-                desc        => 'additional',
+                desc        => $desc,
             }
         );
     }
