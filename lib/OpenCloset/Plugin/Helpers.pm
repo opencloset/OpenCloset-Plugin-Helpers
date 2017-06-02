@@ -676,7 +676,6 @@ sub _merchant_uid {
 =head2 discount_order( $order )
 
 C<$order> 에 C<$order-E<gt>coupon>의 할인금액을 적용합니다.
-suit 타입의 쿠폰에 대해서는 적용되지 않습니다.
 이미 적용되어있다면 무시합니다.
 
   +--------+----------+--------------+-----------+---------------+-------+-------------+-------+------+----------+---------------------+
@@ -709,6 +708,16 @@ or
   | 318438 |    58025 | NULL         |      NULL | 10,000원 할인쿠폰 | -10000 |     -10000  |     0 | NULL | NULL     | 2017-04-25 18:06:00 |
   +--------+----------+--------------+-----------+-----------------+--------+-------------+-------+------+----------+---------------------+
 
+or
+
+  +--------+----------+--------------+-----------+-----------------+--------+-------------+-------+------+----------+---------------------+
+  | id     | order_id | clothes_code | status_id | name            | price  | final_price | stage | desc | pay_with | create_date         |
+  +--------+----------+--------------+-----------+-----------------+--------+-------------+-------+------+----------+---------------------+
+  | 318434 |    58025 | 0J003        |        19 | J003 - 재킷      |  10000 |       10000 |     0 | NULL | NULL     | 2017-04-25 18:06:00 |
+  | ...... |    ..... | .....        |        .. | .... . ..       |  ..... |       ..... |     . | .... | ....     | .......... ........ |
+  | 318438 |    58025 | NULL         |      NULL | suit 할인쿠폰     | -20000 |      -20000 |     0 | NULL | NULL     | 2017-04-25 18:06:00 |
+  +--------+----------+--------------+-----------+-----------------+--------+-------------+-------+------+----------+---------------------+
+
 =cut
 
 sub discount_order {
@@ -721,12 +730,10 @@ sub discount_order {
     my $coupon_status = $coupon->status || '';
     return if $coupon_status =~ m/(us|discard|expir)ed/;
 
-    my $type = $coupon->type;
-    return if $type eq 'suit';
-
     my $rs = $order->order_details( { name => { -like => '%쿠폰%' } }, { rows => 1 } );
     return if $rs->count;
 
+    my $type = $coupon->type;
     if ( $type eq 'default' ) {
         my $price = $coupon->price;
         $order->create_related(
@@ -738,7 +745,7 @@ sub discount_order {
             }
         );
     }
-    elsif ( $type eq 'rate' ) {
+    elsif ( $type =~ m/(rate|suit)/ ) {
         my $desc = '';
         my $rate = $coupon->price;
         my ( $price, $final_price ) = ( 0, 0 );
@@ -774,15 +781,40 @@ sub discount_order {
             }
         }
 
-        $order->create_related(
-            'order_details',
-            {
-                name        => sprintf( "%d%% 할인쿠폰", $rate ),
-                price       => ( $price * $rate / 100 ) * -1,
-                final_price => ( $final_price * $rate / 100 ) * -1,
-                desc        => $desc,
-            }
-        );
+        if ( $type eq 'rate' ) {
+            $order->create_related(
+                'order_details',
+                {
+                    name        => sprintf( "%d%% 할인쿠폰", $rate ),
+                    price       => ( $price * $rate / 100 ) * -1,
+                    final_price => ( $final_price * $rate / 100 ) * -1,
+                    desc        => $desc,
+                }
+            );
+        }
+        elsif ( $type eq 'suit' ) {
+            $order->create_related(
+                'order_details',
+                {
+                    name        => '단벌 할인쿠폰',
+                    price       => $price * -1,
+                    final_price => $final_price * -1,
+                    desc        => $desc
+                }
+            );
+        }
+    }
+
+    ## 쿠폰을 사용했다면 3회 이상 대여 할인을 없앤다.
+    my $detail = $order->search_related(
+        'order_details',
+        { name => '3회 이상 대여 할인', desc => 'additional', },
+        { rows => 1 }
+    )->single;
+
+    if ($detail) {
+        $self->log->info("쿠폰을 사용했기 때문에 3회 이상 대여 할인품목을 제거");
+        $detail->delete;
     }
 
     return 1;
