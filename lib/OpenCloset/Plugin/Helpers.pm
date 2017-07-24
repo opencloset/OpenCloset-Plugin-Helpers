@@ -15,6 +15,7 @@ use Mojo::URL;
 use Parcel::Track;
 use Try::Tiny;
 
+use OpenCloset::Calculator::LateFee ();
 use OpenCloset::Constants::Status
     qw/$RENTAL $RENTABLE $CHOOSE_CLOTHES $CHOOSE_ADDRESS $PAYMENT $PAYMENT_DONE $WAITING_DEPOSIT $PAYBACK/;
 use OpenCloset::Common::Unpaid qw/merchant_uid/;
@@ -733,6 +734,35 @@ sub discount_order {
     my $rs = $order->order_details( { name => { -like => '%쿠폰%' } }, { rows => 1 } );
     return if $rs->count;
 
+    ## online 에서 쿠폰을 사용했다면 3회 이상 대여 할인을 없앤다.
+    my $detail = $order->search_related(
+        'order_details',
+        { name => '3회 이상 대여 할인', desc => 'additional', },
+        { rows => 1 }
+    )->single;
+
+    if ($detail) {
+        $self->log->info("쿠폰을 사용했기 때문에 3회 이상 대여 할인품목을 제거");
+        $detail->delete;
+    }
+
+    ## offline 에서 쿠폰을 사용했다면 할인품목의 가격을 정상가로 되돌린다.
+    my $details = $order->search_related( 'order_details', { desc => { -like => '3회 이상%' } } );
+    while ( my $detail = $details->next ) {
+        my $clothes = $detail->clothes;
+        next unless $clothes;
+
+        my $price          = $clothes->price;
+        my $additional_day = $order->additional_day;
+        $detail->update(
+            {
+                price       => $price,
+                final_price => $price + $price * $OpenCloset::Calculator::LateFee::EXTENSION_RATE * $additional_day,
+                desc        => undef,
+            }
+        );
+    }
+
     my $type = $coupon->type;
     if ( $type eq 'default' ) {
         my $price = $coupon->price;
@@ -803,18 +833,6 @@ sub discount_order {
                 }
             );
         }
-    }
-
-    ## 쿠폰을 사용했다면 3회 이상 대여 할인을 없앤다.
-    my $detail = $order->search_related(
-        'order_details',
-        { name => '3회 이상 대여 할인', desc => 'additional', },
-        { rows => 1 }
-    )->single;
-
-    if ($detail) {
-        $self->log->info("쿠폰을 사용했기 때문에 3회 이상 대여 할인품목을 제거");
-        $detail->delete;
     }
 
     return 1;
