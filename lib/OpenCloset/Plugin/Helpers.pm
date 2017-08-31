@@ -20,7 +20,7 @@ use OpenCloset::Constants::Status
     qw/$RENTAL $RENTABLE $CHOOSE_CLOTHES $CHOOSE_ADDRESS $PAYMENT $PAYMENT_DONE $WAITING_DEPOSIT $PAYBACK/;
 use OpenCloset::Common::Unpaid qw/merchant_uid/;
 
-our $SMS_FROM = '0269291029';
+our $SMS_FROM = '0269291020';
 
 our $INTERVAL = 55;
 our %CHAR2DECIMAL;
