@@ -533,6 +533,8 @@ sub recent_orders {
 
 =head2 transfer_order($coupon, $order)
 
+B<deprecated>.
+
     $self->transfer_order( $coupon, $order );
 
 =cut
