@@ -16,6 +16,7 @@ use Parcel::Track;
 use Try::Tiny;
 
 use OpenCloset::Calculator::LateFee ();
+use OpenCloset::Constants qw/$MAX_SUIT_COUPON_PRICE/;
 use OpenCloset::Constants::Status
     qw/$RENTAL $RENTABLE $CHOOSE_CLOTHES $CHOOSE_ADDRESS $PAYMENT $PAYMENT_DONE $WAITING_DEPOSIT $PAYBACK/;
 use OpenCloset::Common::Unpaid qw/merchant_uid/;
@@ -533,6 +534,8 @@ sub recent_orders {
 
 =head2 transfer_order($coupon, $order)
 
+B<deprecated>.
+
     $self->transfer_order( $coupon, $order );
 
 =cut
@@ -823,6 +826,10 @@ sub discount_order {
             );
         }
         elsif ( $type eq 'suit' ) {
+            if ( $price > $MAX_SUIT_COUPON_PRICE ) {
+                $price = $final_price = $MAX_SUIT_COUPON_PRICE;
+            }
+
             $order->create_related(
                 'order_details',
                 {
