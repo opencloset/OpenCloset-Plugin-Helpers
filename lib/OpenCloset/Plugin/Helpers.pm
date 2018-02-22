@@ -21,7 +21,8 @@ use OpenCloset::Constants::Status
     qw/$RENTAL $RENTABLE $CHOOSE_CLOTHES $CHOOSE_ADDRESS $PAYMENT $PAYMENT_DONE $WAITING_DEPOSIT $PAYBACK/;
 use OpenCloset::Common::Unpaid qw/merchant_uid/;
 
-our $SMS_FROM = '0269291020';
+our $SMS_FROM     = '0269291020';
+our $SHIPPING_FEE = 3_000;
 
 our $INTERVAL = 55;
 our %CHAR2DECIMAL;
@@ -843,6 +844,18 @@ sub discount_order {
                 }
             );
         }
+    }
+
+    if ( $order->online and $coupon->free_shipping ) {
+        $order->create_related(
+            'order_details',
+            {
+                name        => "배송비 무료쿠폰",
+                price       => $SHIPPING_FEE * -1,
+                final_price => $SHIPPING_FEE * -1,
+                desc        => 'additional',
+            }
+        );
     }
 
     return 1;
