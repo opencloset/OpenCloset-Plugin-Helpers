@@ -862,16 +862,20 @@ sub discount_order {
         }
     }
 
-    if ( $order->online and $coupon->free_shipping ) {
-        $order->create_related(
-            'order_details',
-            {
-                name        => "배송비 무료쿠폰",
-                price       => $SHIPPING_FEE * -1,
-                final_price => $SHIPPING_FEE * -1,
-                desc        => 'additional',
-            }
-        );
+    if ( $order->online ) {
+        my $event = $coupon->event;
+        my $free_shipping = $coupon->free_shipping || $event ? $event->free_shipping : 0;
+        if ($free_shipping) {
+            $order->create_related(
+                'order_details',
+                {
+                    name        => "배송비 무료쿠폰",
+                    price       => $SHIPPING_FEE * -1,
+                    final_price => $SHIPPING_FEE * -1,
+                    desc        => 'additional',
+                }
+            );
+        }
     }
 
     return 1;
