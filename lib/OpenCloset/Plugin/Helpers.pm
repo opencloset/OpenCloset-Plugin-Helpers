@@ -649,9 +649,12 @@ sub coupon_validate {
         ## 마감일이 예약하는날짜 기준이든 대여일 기준이든 모두 해당됨
         ## 타입을 추가되었을때에 예외처리가 필요하면 분기해야 함
         if ( $event->end_date->epoch < $now->epoch ) {
-            my $name = $event->name . ' - ' . $event->desc;
+            my $name = $event->name . ' - ' . $event->title;
             $self->log->info("event($name) is ended: $valid_code");
-            return ( undef, "$name 이벤트가 종료되었습니다." );
+            return ( undef, sprintf("%s 이벤트가 종료되었습니다. (%s ~ %s)",
+                                    $event->title,
+                                    $event->start_date->ymd,
+                                    $event->end_date->ymd));
         }
     }
 
