@@ -634,11 +634,27 @@ sub coupon_validate {
         $self->transfer_order($coupon);
     }
 
+    my $now = DateTime->now;
     if ( my $expires = $coupon->expires_date ) {
-        if ( $expires->epoch < DateTime->now->epoch ) {
+        if ( $expires->epoch < $now->epoch ) {
             $self->log->info("coupon is expired: $valid_code");
             $coupon->update( { status => 'expired' } );
             return ( undef, '유효기간이 지난 쿠폰입니다' );
+        }
+    }
+
+    my $event = $coupon->event;
+    if ( $event && $event->end_date ) {
+        ## 이벤트 타입과는 상관없다.
+        ## 마감일이 예약하는날짜 기준이든 대여일 기준이든 모두 해당됨
+        ## 타입을 추가되었을때에 예외처리가 필요하면 분기해야 함
+        if ( $event->end_date->epoch < $now->epoch ) {
+            my $name = $event->name . ' - ' . $event->title;
+            $self->log->info("event($name) is ended: $valid_code");
+            return ( undef, sprintf("%s 이벤트가 종료되었습니다. (%s ~ %s)",
+                                    $event->title,
+                                    $event->start_date->ymd,
+                                    $event->end_date->ymd));
         }
     }
 
@@ -846,16 +862,20 @@ sub discount_order {
         }
     }
 
-    if ( $order->online and $coupon->free_shipping ) {
-        $order->create_related(
-            'order_details',
-            {
-                name        => "배송비 무료쿠폰",
-                price       => $SHIPPING_FEE * -1,
-                final_price => $SHIPPING_FEE * -1,
-                desc        => 'additional',
-            }
-        );
+    if ( $order->online ) {
+        my $event = $coupon->event;
+        my $free_shipping = $coupon->free_shipping || $event ? $event->free_shipping : 0;
+        if ($free_shipping) {
+            $order->create_related(
+                'order_details',
+                {
+                    name        => "배송비 무료쿠폰",
+                    price       => $SHIPPING_FEE * -1,
+                    final_price => $SHIPPING_FEE * -1,
+                    desc        => 'additional',
+                }
+            );
+        }
     }
 
     return 1;

@@ -16,3 +16,4 @@ requires 'Try::Tiny';
 # cpan.theopencloset.net
 requires 'OpenCloset::Calculator::LateFee';
 requires 'OpenCloset::Common', 'v0.1.5';
+requires 'OpenCloset::Schema', '0.059';
