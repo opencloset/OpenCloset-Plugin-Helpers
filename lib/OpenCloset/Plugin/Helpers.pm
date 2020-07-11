@@ -226,8 +226,11 @@ sub footer {
               <br>
               전화 02-6929-1020
               <br>
+              입금계좌 (국민은행) 205737-04-003013 (예금주:사단법인 열린옷장)
+              <br>
               <a href="https://www.theopencloset.net/terms" target="_blank">이용약관</a>
               <a href="https://www.theopencloset.net/privacy" target="_blank">개인정보취급방침</a>
+              <a href="https://teht.hometax.go.kr/websquare/websquare.html?w2xPath=/ui/ab/a/a/UTEABAAA13.xml" target="_blank">사업자정보확인</a>
             </p>
           </div>
           <div class="col-md-4">
