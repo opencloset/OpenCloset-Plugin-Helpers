@@ -20,6 +20,7 @@ use OpenCloset::Constants qw/%MAX_SUIT_TYPE_COUPON_PRICE/;
 use OpenCloset::Constants::Status
     qw/$RENTAL $RENTABLE $CHOOSE_CLOTHES $CHOOSE_ADDRESS $PAYMENT $PAYMENT_DONE $WAITING_DEPOSIT $PAYBACK/;
 use OpenCloset::Common::Unpaid qw/merchant_uid/;
+use OpenCloset::Size::Guess;
 
 our $SMS_FROM     = '0269291020';
 our $SHIPPING_FEE = 3_000;
@@ -66,6 +67,7 @@ sub register {
     $app->helper( commify         => \&commify );
     $app->helper( merchant_uid    => \&_merchant_uid );
     $app->helper( discount_order  => \&discount_order );
+    $app->helper( user_avg_diff   => \&user_avg_diff );
 }
 
 =head1 HELPERS
@@ -882,6 +884,52 @@ sub discount_order {
     }
 
     return 1;
+}
+
+=head2 user_avg_diff( $user )
+
+=cut
+
+sub user_avg_diff {
+    my ( $self, $user ) = @_;
+
+    my %data = ( ret => 0, diff => undef, avg => undef, );
+    for (qw/ neck belly topbelly bust arm thigh waist hip leg foot knee /) {
+        $data{diff}{$_} = '-';
+        $data{avg}{$_}  = 'N/A';
+    }
+
+    return \%data unless $user;
+    return \%data unless $user->user_info;
+
+    unless ( $user->user_info->gender =~ m/^(male|female)$/
+        && $user->user_info->height
+        && $user->user_info->weight )
+    {
+        return \%data;
+    }
+
+    my $schema = $self->app->can('DB') ? $self->app->DB : $self->app->schema;
+    my $timezone = $self->config->{timezone} || 'Asia/Seoul';
+
+    my $osg_db = OpenCloset::Size::Guess->new(
+        'DB', _time_zone => $timezone,
+        _schema => $schema, _range => 0,
+    );
+    $osg_db->gender( $user->user_info->gender );
+    $osg_db->height( int $user->user_info->height );
+    $osg_db->weight( int $user->user_info->weight );
+    my $avg = $osg_db->guess;
+    my $diff;
+    for (qw/ neck belly topbelly bust arm thigh waist hip leg foot knee /) {
+        $diff->{$_} = $user->user_info->$_
+            && $avg->{$_} ? sprintf( '%+.1f', $user->user_info->$_ - $avg->{$_} ) : '-';
+        $avg->{$_} = $avg->{$_} ? sprintf( '%.1f', $avg->{$_} ) : 'N/A';
+    }
+
+    %data = ( ret => 1, diff => $diff, avg => $avg, );
+
+    return \%data;
 }
 
 1;
