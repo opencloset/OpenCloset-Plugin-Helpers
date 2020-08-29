@@ -771,6 +771,12 @@ sub discount_order {
         $detail->delete;
     }
 
+    $self->log->debug("할인 전 주문서정보");
+    $self->log->debug("$order");
+    for my $detail ($order->order_details) {
+        $self->log->debug("$detail");
+    }
+
     ## offline 에서 쿠폰을 사용했다면 할인품목의 가격을 정상가로 되돌린다.
     my $details = $order->search_related( 'order_details', { desc => { -like => '3회 이상%' } } );
     while ( my $detail = $details->next ) {
