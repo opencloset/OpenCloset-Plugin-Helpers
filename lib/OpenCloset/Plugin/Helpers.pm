@@ -24,6 +24,7 @@ use OpenCloset::Size::Guess;
 
 our $SMS_FROM     = '0269291020';
 our $SHIPPING_FEE = 3_000;
+our $DEFAULT_MAX_SUIT_TYPE_COUPON_PRICE = 30_000;
 
 our $INTERVAL = 55;
 our %CHAR2DECIMAL;
@@ -857,8 +858,9 @@ sub discount_order {
             my $user      = $order->user;
             my $user_info = $user->user_info;
             my $gender    = $user_info->gender;
-            if ( $price > $MAX_SUIT_TYPE_COUPON_PRICE{$gender} ) {
-                $price = $final_price = $MAX_SUIT_TYPE_COUPON_PRICE{$gender};
+            my $max_coupon_price = $MAX_SUIT_TYPE_COUPON_PRICE{$gender} || $DEFAULT_MAX_SUIT_TYPE_COUPON_PRICE;
+            if ( $price > $max_coupon_price ) {
+                $price = $final_price = $max_coupon_price;
             }
 
             $order->create_related(
