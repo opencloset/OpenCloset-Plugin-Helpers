@@ -240,17 +240,18 @@ sub footer {
             <h5>링크</h5>
             <ul class="list-inline">
               <li><a href="https://theopencloset.net/">홈페이지</a></li>
-              <li><a href="https://visit.theopencloset.net/">방문 예약</a></li>
-              <li><a href="https://share.theopencloset.net/welcome/">온라인 예약</a></li>
+              <li><a href="https://visit.theopencloset.net/visit">방문 예약</a></li>
+              <li><a href="https://share.theopencloset.net/welcome/">택배주문</a></li>
             </ul>
           </div>
           <div class="col-md-3">
-            <h5>Connect</h5>
+            <h5>Contact</h5>
             <ul class="list-inline">
-              <li><a href="https://twitter.com/openclosetnet/"><i class="fa fa-2x fa-twitter-square"></i></a></li>
-              <li><a href="https://www.facebook.com/TheOpenCloset/"><i class="fa fa-2x fa-facebook-square"></i></a></li>
-              <li><a href="https://www.instagram.com/opencloset_people/"><i class="fa fa-2x fa-instagram"></i></a></li>
-              <li><a href="http://theopencloset.tistory.com/"><i class="fa fa-2x fa-rss-square"></i></a></li>
+              <li>
+                <a href="https://pf.kakao.com/_xaxcxotE" target="blank">
+                  <img src="https://developers.kakao.com/assets/img/about/logos/channel/consult_small_yellow_pc.png" title="카카오톡 채널 1:1 채팅 버튼" alt="카카오톡 채널 1:1 채팅 버튼" srcset="https://developers.kakao.com/assets/img/about/logos/channel/consult_small_yellow_pc_2X.png 2x, https://developers.kakao.com/assets/img/about/logos/channel/consult_small_yellow_pc_3X.png 3x">
+                </a>
+              </li>
             </ul>
           </div>
         </div>
