@@ -859,7 +859,10 @@ sub discount_order {
             my $user      = $order->user;
             my $user_info = $user->user_info;
             my $gender    = $user_info->gender;
-            my $max_coupon_price = $MAX_SUIT_TYPE_COUPON_PRICE{$gender} || $DEFAULT_MAX_SUIT_TYPE_COUPON_PRICE;
+
+            ## suit 타입에서는 price 가 coupon 의 최대할인가
+            ## 0 으로 발행된 쿠폰이면 기본 할인가를 적용
+            my $max_coupon_price = $coupon->price || $MAX_SUIT_TYPE_COUPON_PRICE{$gender} || $DEFAULT_MAX_SUIT_TYPE_COUPON_PRICE;
             if ( $price > $max_coupon_price ) {
                 $price = $final_price = $max_coupon_price;
             }
