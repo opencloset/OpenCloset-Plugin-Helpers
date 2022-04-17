@@ -797,7 +797,7 @@ sub discount_order {
     }
 
     my $type = $coupon->type;
-    if ( $type eq 'default' ) {
+    if ( $type =~ m/(default|price)/ ) {
         my $price = $coupon->price;
         $order->create_related(
             'order_details',
@@ -805,8 +805,41 @@ sub discount_order {
                 name        => sprintf( "%s원 할인쿠폰", $self->commify($price) ),
                 price       => $price * -1,
                 final_price => $price * -1,
+                desc        => $order->online ? 'additional' : '',
             }
         );
+
+        ## 3만원+ 쿠폰을 사용시에는
+        ## 자켓, 바지, 셔츠, 구두, 타이, 벨트 가 포함된 경우 2,000 원을 추가할인
+        if ($coupon->price >= 30_000) {
+            my %categories;
+            if ($order->online) {
+                my $details = $order->order_details( { desc => { '!=' => 'additional' }, clothes_code => undef } );
+                while ( my $detail = $details->next ) {
+                    my $name = $detail->name;
+                    ($name) = split / - /, $name;
+                    next unless $name =~ m/^[a-z]/;
+                    $categories{$name} = 1;
+                }
+            } else {
+                my $details = $order->order_details( { clothes_code => { '!=' => undef } } );
+                while ( my $detail = $details->next ) {
+                    $categories{$detail->clothes->category} = 1;
+                }
+            }
+
+            if ($categories{jacket} && $categories{pants} && $categories{shirt} && $categories{shoes} && $categories{tie} && $categories{belt}) {
+                my $price = 2_000;
+                $order->create_related(
+                    'order_details',
+                    {
+                        name        => sprintf( "3만원+ 쿠폰에서는 %s원 추가할인", $self->commify($price) ),
+                        price       => $price * -1,
+                        final_price => $price * -1,
+                    }
+                );
+            }
+        }
     }
     elsif ( $type =~ m/(rate|suit)/ ) {
         my $desc = '';
